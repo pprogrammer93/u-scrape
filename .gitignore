@@ -1,0 +1,3 @@
+*.log
+sample*
+__pycache__
