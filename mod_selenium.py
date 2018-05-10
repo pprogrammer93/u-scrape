@@ -81,12 +81,18 @@ def scan_videos_link(driver, url):
 		if scroll_to_bottom(driver) == True:
 			break;
 	videos = driver.find_elements_by_xpath("//h3/a[@id='video-title']");
+	channel_name = driver.find_element_by_xpath("//h1[@id='channel-title-container']/span").text;
+	eAuthor = driver.find_elements_by_xpath("//div[@id='metadata']/div[@id='byline-container']/yt-formatted-string/a");
 	links = [];
 	print("Collecting url...");
 	for video in videos:
 		title = video.text;
 		link = video.get_attribute("href");
-		if len(title) > 0 and len(link) > 0:
+		if len(eAuthor) > 0:
+			true_author = eAuthor[0].text == channel_name;
+		else:
+			true_author = True;
+		if len(title) > 0 and len(link) > 0 and true_author:
 			links.append(link);
 			print("Appending " + title + " " + link);
 	return links;
