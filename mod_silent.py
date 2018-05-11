@@ -85,7 +85,13 @@ class Worker(Thread):
 		self.links = links;
 	def extract_data(self, url):
 		headers = {"accept-language": "en-us"};
-		page = requests.get(url, headers=headers);
+		requestOK = False;
+		while requestOK == False:
+			try:
+				page = requests.get(url, headers=headers);
+				requestOK = True;
+			except requests.exception.ConnectionError:
+				requestOK = False;
 		parsed = BeautifulSoup(page.content, "html.parser");
 
 		ldate = list(parsed.select("strong.watch-time-text"));
