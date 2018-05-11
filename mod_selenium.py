@@ -9,6 +9,7 @@ import common;
 import time;
 import math;
 import datetime;
+import platform;
 
 class StaticScroller:
 	def __init__(self, expected, xpath):
@@ -20,6 +21,24 @@ class StaticScroller:
 		cc = int(math.floor(driver.execute_script("return window.pageYOffset")));
 		ce = int(math.floor(self.expected));
 		return cc < ce and len(driver.find_elements_by_xpath(self.xpath)) > 0;
+
+def determine_exec():
+	os = platform.platform().lower();
+	arc = platform.machine().lower();
+	if os.find("windows") != -1:
+		if arc == "i386" or arc == "i686":
+			return "geckodriver/geckodriver-win-32";
+		else:
+			return "geckodriver/geckodriver-win-64";
+	elif os.find("linux") != -1:
+		if arc == "i386" or arc == "i686":
+			return "geckodriver/geckodriver-linux-32";
+		else:
+			return "geckodriver/geckodriver-linux-64";
+	elif os.find("mac") != -1:
+		return "geckodriver/geckodriver-mac";
+	else:
+		return None;
 
 def force_visit(driver, url):
 	try:
@@ -141,7 +160,15 @@ def get_channel_start_date(driver):
 	return datetime.date(int(year), month, day);
 
 def gather_channel_data(channel_name, videos=False, join_date=False):
-	driver = webdriver.Firefox();
+	executable_path = determine_exec();
+	if executable_path == None:
+		print("Cannot determine operating system");
+		try:
+			driver = webdriver.Firefox();
+		except Exception:
+			print("Cannot find geckodriver executable in PATH");
+	else:
+		driver = webdriver.Firefox(executable_path=executable_path);
 	visit_channel(driver, channel_name);
 	url = driver.current_url;
 
