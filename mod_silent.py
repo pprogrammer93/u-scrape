@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup;
 from threading import Lock, Event, Thread;
 from queue import LifoQueue;
+from requests.exceptions import ConnectionError, ReadTimeout
 import requests;
 import time;
 import common;
@@ -90,7 +91,7 @@ class Worker(Thread):
 			try:
 				page = requests.get(url, headers=headers);
 				requestOK = True;
-			except requests.exception.ConnectionError:
+			except (ConnectionError, ReadTimeout):
 				requestOK = False;
 		parsed = BeautifulSoup(page.content, "html.parser");
 
@@ -100,7 +101,14 @@ class Worker(Thread):
 		lSentiment = list(parsed.select('button[data-position="bottomright"] span'));
 
 		title = lTitle[0].get_text().strip();
-		views = common.toInt(lView[0].get_text().strip().split(" ")[0], ",");
+		try:
+			views = common.toInt(lView[0].get_text().strip().split(" ")[0], ",");
+		except IndexError as err:
+			print("Length of elements: ", len(lView));
+			if len(lView) > 0:
+				print(lView[0].get_text());
+			print(err);
+			return None;
 		likes = common.toInt(lSentiment[0].get_text().strip(), ",");
 		dislikes = common.toInt(lSentiment[2].get_text().strip(), ",");
 
@@ -122,13 +130,17 @@ class Worker(Thread):
 	def run(self):
 		prev = 0;
 		count = 0;
+		failed = 0;
 		while count < len(self.links):
 			now = time.time();
 			if (now - prev) > 0.0:
 				url = self.links[count];
 				res = self.extract_data(url);
-				self.pool.add(res, url);
-				count += 1;
+				if res != None:
+					self.pool.add(res, url);
+					count += 1;
+				else:
+					self.links = self.links[:count] + self.links[(count+1):];
 				prev = now;
 
 def calculate_quota(ammount, divider):

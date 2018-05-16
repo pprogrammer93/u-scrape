@@ -83,7 +83,11 @@ def visit_channel(driver, channel_name):
 	channelTitle.click();
 
 def open_channel_tab(driver, tabname):
-	wait = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "tabsContent")));
+	try:
+		wait = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "tabsContent")));
+	except TimeoutException:
+		print("Reloading...");
+		driver.get(driver.current_url);
 	tabs = driver.find_elements_by_tag_name("paper-tab");
 	videoIndex = -1;
 	i = 0;
@@ -160,6 +164,8 @@ def get_channel_start_date(driver):
 	return datetime.date(int(year), month, day);
 
 def gather_channel_data(channel_name, videos=False, join_date=False):
+	profile = webdriver.FirefoxProfile();
+	profile.set_preference("intl.accept_languages", "en-us");
 	executable_path = determine_exec();
 	if executable_path == None:
 		print("Cannot determine operating system");
@@ -168,7 +174,7 @@ def gather_channel_data(channel_name, videos=False, join_date=False):
 		except Exception:
 			print("Cannot find geckodriver executable in PATH");
 	else:
-		driver = webdriver.Firefox(executable_path=executable_path);
+		driver = webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
 	visit_channel(driver, channel_name);
 	url = driver.current_url;
 
