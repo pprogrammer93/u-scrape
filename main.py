@@ -9,9 +9,12 @@ import sys;
 channel_name = input("Channel Name: ");
 args = sys.argv;
 if len(args) > 1:
-	channel_data = visible.gather_channel_data(channel_name, args[1], videos=True, join_date=True);
+	if len(args) > 2 and args[2] == "silent":
+		channel_data = visible.gather_channel_data(channel_name, args[1], True);
+	else:
+		channel_data = visible.gather_channel_data(channel_name, args[1]);
 else:
-	channel_data = visible.gather_channel_data(channel_name, None, videos=True, join_date=True);
+	channel_data = visible.gather_channel_data(channel_name, None);
 
 links = channel_data["videos"];
 join_date = channel_data["date"];

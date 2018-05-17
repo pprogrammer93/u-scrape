@@ -183,10 +183,12 @@ def get_channel_start_date(driver):
 
 	return datetime.date(int(year), month, day);
 
-def getChromeDriver():
+def getChromeDriver(silent):
 	options = Options();
-	options.add_argument("--mute-audio");
-	options.add_argument("--headless");
+	if silent:
+		options.add_argument("--mute-audio");
+		options.add_argument("--headless");
+		options.add_argument("window-size=1366x768");
 	options.add_argument("--lang=en-us");
 	executable_path = determine_exec("chrome");
 	if executable_path == None:
@@ -213,17 +215,17 @@ def getFirefoxDriver():
 	else:
 		return webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
 
-def gather_channel_data(channel_name, browser=None):
+def gather_channel_data(channel_name, browser=None, silent=False):
 	if browser != None:
 		if browser == "chrome":
-			driver = getChromeDriver();
+			driver = getChromeDriver(silent);
 		elif browser == "firefox":
 			driver = getFirefoxDriver();
 		else:
 			raise RuntimeError("Unknown browser");
 	else:
 		try:
-			driver = getChromeDriver();
+			driver = getChromeDriver(silent);
 		except Exception:
 			try:
 				driver = getFirefoxDriver();
@@ -238,13 +240,11 @@ def gather_channel_data(channel_name, browser=None):
 		"date": None
 	};
 
-	if videos == True:
-		videoLinks = collect_videos_link(driver);
-		res["videos"] = videoLinks;
-		force_visit(driver, url);
-	if join_date == True:
-		date = get_channel_start_date(driver);
-		res["date"] = date;
+	videoLinks = collect_videos_link(driver);
+	res["videos"] = videoLinks;
+	force_visit(driver, url);
+	date = get_channel_start_date(driver);
+	res["date"] = date;
 
 	driver.close();
 	return res;
