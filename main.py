@@ -1,10 +1,40 @@
 from selenium import webdriver;
+from bs4 import BeautifulSoup;
 import mod_selenium as visible;
 import mod_silent as silent;
 import common;
 import math;
 import datetime;
 import sys;
+import requests;
+
+# headers = {"accept-language": "en-us"};
+# page = requests.get("https://www.youtube.com/channel/UCJeH7gl6PbDVV4DTldIOPOA/about", headers=headers);
+# parsed = BeautifulSoup(page.content, "html.parser");
+# stats = parsed.select('ul#browse-items-primary li div.about-metadata-container div.about-stats span.about-stat');
+
+# for stat in stats:
+# 	if stat.get_text().find("Joined", 0, 6) != -1:
+# 		print(stat.get_text());
+
+# page = requests.get("https://www.youtube.com/results?search_query=" + "evanescence");
+# parsed = BeautifulSoup(page.content, "html.parser");
+# urls = parsed.select('div.yt-lockup-content h3.yt-lockup-title a');
+
+# for url in urls:
+# 	ls = 1;
+# 	le = url["href"].find("/", 1);
+# 	href = url["href"][ls:le];
+# 	if href=="user" or href=="channel":
+# 		print("http://www.youtube.com" + url["href"]);
+
+# page = requests.get("https://www.youtube.com/channel/UCJeH7gl6PbDVV4DTldIOPOA/videos");
+# parsed = BeautifulSoup(page.content, "html.parser");
+# menuitem = parsed.select('ul#browse-items-primary li.branded-page-v2-subnav-container ul[role="menu"] li[role="menuitem"] span');
+
+# for item in menuitem:
+# 	print("Appending category " + item.get_text());
+# 	print("https://www.youtube.com" + item["href"]);
 
 channel_name = input("Channel Name: ");
 args = sys.argv;

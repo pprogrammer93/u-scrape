@@ -5,12 +5,14 @@ from selenium.webdriver.support.ui import WebDriverWait;
 from selenium.webdriver.support import expected_conditions as EC;
 from selenium.common.exceptions import TimeoutException;
 from selenium.common.exceptions import WebDriverException;
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.options import Options;
+from bs4 import BeautifulSoup;
 import common;
 import time;
 import math;
 import datetime;
 import platform;
+import requests;
 
 class StaticScroller:
 	def __init__(self, expected, xpath):
@@ -140,25 +142,36 @@ def scan_videos_link(driver, url):
 			print("Appending " + title + " " + link);
 	return links;
 
-def collect_videos_link(driver):
-	open_channel_tab(driver, "VIDEOS");
+def collect_videos_link(driver, url, silent=False):
+	if silent:
+		headers = {"accept-language": "en-us"};
+		page = requests.get(url + "/videos", headers=headers);
+		parsed = BeautifulSoup(page.content, "html.parser");
+		menuitem = parsed.select('ul#browse-items-primary li.branded-page-v2-subnav-container ul[role="menu"] li[role="menuitem"] span');
 
-	category_xpath = "//div[@id='primary-items']/yt-dropdown-menu/paper-menu-button/iron-dropdown[@id='dropdown']/div/div/paper-listbox";
-
-	eLinks = get_elements(driver, By.XPATH, category_xpath + "/a");
-	divs = get_elements(driver, By.XPATH, category_xpath + "/a/paper-item/paper-item-body/div[contains(@class, 'item')]");
-
-	if len(eLinks) > 1:
 		categoryLinks = [];
-		for index in range(0, len(eLinks)):
-			name = divs[index].get_attribute("innerText");
-			link = eLinks[index].get_attribute("href");
-			if name != "All videos":
-				print("Appending category " + name);
-				categoryLinks.append(link);
-		categoryLinks = list(set(categoryLinks));
+		for item in menuitem:
+			print("Appending category " + item.get_text());
+			categoryLinks.append("https://www.youtube.com" + item["href"]);
 	else:
-		categoryLinks = [eLinks[0].get_attribute("href")];
+		open_channel_tab(driver, "VIDEOS");
+
+		category_xpath = "//div[@id='primary-items']/yt-dropdown-menu/paper-menu-button/iron-dropdown[@id='dropdown']/div/div/paper-listbox";
+
+		eLinks = get_elements(driver, By.XPATH, category_xpath + "/a");
+		divs = get_elements(driver, By.XPATH, category_xpath + "/a/paper-item/paper-item-body/div[contains(@class, 'item')]");
+
+		if len(eLinks) > 1:
+			categoryLinks = [];
+			for index in range(0, len(eLinks)):
+				name = divs[index].get_attribute("innerText");
+				link = eLinks[index].get_attribute("href");
+				if name != "All videos":
+					print("Appending category " + name);
+					categoryLinks.append(link);
+			categoryLinks = list(set(categoryLinks));
+		else:
+			categoryLinks = [eLinks[0].get_attribute("href")];
 	
 	print("Found " + str(len(categoryLinks)) + " categories... ");
 
@@ -169,21 +182,33 @@ def collect_videos_link(driver):
 
 	return list(set(videoLinks));
 
-def get_channel_start_date(driver):
-	open_channel_tab(driver, "ABOUT");
+def get_channel_start_date(driver, url, silent=False):
+	datestr = None;
+	if silent:
+		# print("SILENT");
+		headers = {"accept-language": "en-us"};
+		page = requests.get(url + "/about", headers=headers);
+		parsed = BeautifulSoup(page.content, "html.parser");
+		stats = parsed.select('ul#browse-items-primary li div.about-metadata-container div.about-stats span.about-stat');
+		# print(len(stats));
+		for stat in stats:
+			# print(stat.get_text());
+			if stat.get_text().find("Joined", 0, 6) != -1:
+				datestr = stat.get_text().split(" ");
+	else:
+		# print("NOISY");
+		open_channel_tab(driver, "ABOUT");
+		date_xpath = "//div[@id='right-column']/yt-formatted-string[contains(@class, 'ytd-channel-about-metadata-renderer')]";
+		eDate = get_elements(driver, By.XPATH, date_xpath);
+		datestr = eDate[1].text.split(" ");
 
-	date_xpath = "//div[@id='right-column']/yt-formatted-string[contains(@class, 'ytd-channel-about-metadata-renderer')]";
-
-	eDate = get_elements(driver, By.XPATH, date_xpath);
-
-	str = eDate[1].text.split(" ");
-	day = common.toInt(str[2]);
-	month = common.get_month(str[1]);
-	year = str[3];
+	day = common.toInt(datestr[2]);
+	month = common.get_month(datestr[1]);
+	year = datestr[3];
 
 	return datetime.date(int(year), month, day);
 
-def getChromeDriver(silent):
+def get_chrome_driver(silent):
 	options = Options();
 	if silent:
 		options.add_argument("--mute-audio");
@@ -202,7 +227,7 @@ def getChromeDriver(silent):
 
 
 
-def getFirefoxDriver():
+def get_firefox_driver():
 	profile = webdriver.FirefoxProfile();
 	profile.set_preference("intl.accept_languages", "en-us");
 	executable_path = determine_exec("firefox");
@@ -215,36 +240,56 @@ def getFirefoxDriver():
 	else:
 		return webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
 
+def get_channel_url(channel_name):
+	page = requests.get("https://www.youtube.com/results?search_query=" + channel_name.replace(" ", "+"));
+	parsed = BeautifulSoup(page.content, "html.parser");
+	urls = parsed.select('div.yt-lockup-content h3.yt-lockup-title a');
+
+	for url in urls:
+		ls = 1;
+		le = url["href"].find("/", 1);
+		href = url["href"][ls:le];
+		if href=="user" or href=="channel":
+			return "http://www.youtube.com" + url["href"];
+	return None;
+
 def gather_channel_data(channel_name, browser=None, silent=False):
 	if browser != None:
 		if browser == "chrome":
-			driver = getChromeDriver(silent);
+			driver = get_chrome_driver(silent);
 		elif browser == "firefox":
-			driver = getFirefoxDriver();
+			driver = get_firefox_driver();
 		else:
 			raise RuntimeError("Unknown browser");
 	else:
 		try:
-			driver = getChromeDriver(silent);
+			driver = get_chrome_driver(silent);
 		except Exception:
 			try:
-				driver = getFirefoxDriver();
+				driver = get_firefox_driver();
 			except Exception as err:
 				print("Cannot use any browser.");
 				raise err;
-	visit_channel(driver, channel_name);
-	url = driver.current_url;
+	if silent:
+		url = get_channel_url(channel_name);
+		if url == None:
+			print("Channel not found");
+			return None;
+	else:
+		visit_channel(driver, channel_name);
+		url = driver.current_url;
 
 	res = {
 		"videos": None,
 		"date": None
 	};
 
-	videoLinks = collect_videos_link(driver);
-	res["videos"] = videoLinks;
-	force_visit(driver, url);
-	date = get_channel_start_date(driver);
+	date = get_channel_start_date(driver, url, silent);
 	res["date"] = date;
+	if silent==False:
+		force_visit(driver, url);
+	videoLinks = collect_videos_link(driver, url, silent);
+	res["videos"] = videoLinks;
 
 	driver.close();
 	return res;
