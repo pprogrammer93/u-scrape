@@ -118,7 +118,10 @@ class Worker(Thread):
 		month = common.get_month(sdate[slen-3]);
 		year = sdate[slen-1];
 		date_diff = datetime.date.today() - datetime.date(int(year), month, day);
-		vpd = int(math.floor(views / date_diff.days));
+		if date_diff == 0:
+			vpd = views;
+		else:
+			vpd = int(math.floor(views / date_diff.days));
 
 		return {
 			"title": title,
