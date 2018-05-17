@@ -185,6 +185,8 @@ def get_channel_start_date(driver):
 
 def getChromeDriver():
 	options = Options();
+	options.add_argument("--mute-audio");
+	options.add_argument("--headless");
 	options.add_argument("--lang=en-us");
 	executable_path = determine_exec("chrome");
 	if executable_path == None:
@@ -211,7 +213,7 @@ def getFirefoxDriver():
 	else:
 		return webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
 
-def gather_channel_data(channel_name, browser=None, videos=False, join_date=False):
+def gather_channel_data(channel_name, browser=None):
 	if browser != None:
 		if browser == "chrome":
 			driver = getChromeDriver();
