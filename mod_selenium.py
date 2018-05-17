@@ -185,18 +185,14 @@ def collect_videos_link(driver, url, silent=False):
 def get_channel_start_date(driver, url, silent=False):
 	datestr = None;
 	if silent:
-		# print("SILENT");
 		headers = {"accept-language": "en-us"};
 		page = requests.get(url + "/about", headers=headers);
 		parsed = BeautifulSoup(page.content, "html.parser");
 		stats = parsed.select('ul#browse-items-primary li div.about-metadata-container div.about-stats span.about-stat');
-		# print(len(stats));
 		for stat in stats:
-			# print(stat.get_text());
 			if stat.get_text().find("Joined", 0, 6) != -1:
 				datestr = stat.get_text().split(" ");
 	else:
-		# print("NOISY");
 		open_channel_tab(driver, "ABOUT");
 		date_xpath = "//div[@id='right-column']/yt-formatted-string[contains(@class, 'ytd-channel-about-metadata-renderer')]";
 		eDate = get_elements(driver, By.XPATH, date_xpath);

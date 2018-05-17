@@ -1,50 +1,25 @@
 from selenium import webdriver;
-from bs4 import BeautifulSoup;
 import mod_selenium as visible;
 import mod_silent as silent;
 import common;
 import math;
 import datetime;
+import time;
 import sys;
-import requests;
-
-# headers = {"accept-language": "en-us"};
-# page = requests.get("https://www.youtube.com/channel/UCJeH7gl6PbDVV4DTldIOPOA/about", headers=headers);
-# parsed = BeautifulSoup(page.content, "html.parser");
-# stats = parsed.select('ul#browse-items-primary li div.about-metadata-container div.about-stats span.about-stat');
-
-# for stat in stats:
-# 	if stat.get_text().find("Joined", 0, 6) != -1:
-# 		print(stat.get_text());
-
-# page = requests.get("https://www.youtube.com/results?search_query=" + "evanescence");
-# parsed = BeautifulSoup(page.content, "html.parser");
-# urls = parsed.select('div.yt-lockup-content h3.yt-lockup-title a');
-
-# for url in urls:
-# 	ls = 1;
-# 	le = url["href"].find("/", 1);
-# 	href = url["href"][ls:le];
-# 	if href=="user" or href=="channel":
-# 		print("http://www.youtube.com" + url["href"]);
-
-# page = requests.get("https://www.youtube.com/channel/UCJeH7gl6PbDVV4DTldIOPOA/videos");
-# parsed = BeautifulSoup(page.content, "html.parser");
-# menuitem = parsed.select('ul#browse-items-primary li.branded-page-v2-subnav-container ul[role="menu"] li[role="menuitem"] span');
-
-# for item in menuitem:
-# 	print("Appending category " + item.get_text());
-# 	print("https://www.youtube.com" + item["href"]);
 
 channel_name = input("Channel Name: ");
 args = sys.argv;
 if len(args) > 1:
 	if len(args) > 2 and args[2] == "silent":
+		time_start = time.time();
 		channel_data = visible.gather_channel_data(channel_name, args[1], True);
 	else:
+		time_start = time.time();
 		channel_data = visible.gather_channel_data(channel_name, args[1]);
 else:
+	time_start = time.time();
 	channel_data = visible.gather_channel_data(channel_name, None);
+collect_duration = int(round(time.time() - time_start));
 
 links = channel_data["videos"];
 join_date = channel_data["date"];
@@ -63,6 +38,7 @@ print("Total Dislikes    : " + common.readable(data["dislikes"]));
 print("Likes per Video    : " + common.readable(average_likes));
 print("Dislikes per Video : " + common.readable(average_dislikes));
 print("Visit Duration " + str(data["duration"]) + " seconds");
+print("Total Duration " + str(data["duration"] + collect_duration) + " seconds");
 
 print("# Most Viewed Videos:");
 common.print_videos_data(data["most_viewed"]);
