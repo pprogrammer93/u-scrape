@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait;
 from selenium.webdriver.support import expected_conditions as EC;
 from selenium.common.exceptions import TimeoutException;
 from selenium.common.exceptions import WebDriverException;
+from selenium.webdriver.chrome.options import Options
 import common;
 import time;
 import math;
@@ -22,21 +23,33 @@ class StaticScroller:
 		ce = int(math.floor(self.expected));
 		return cc < ce and len(driver.find_elements_by_xpath(self.xpath)) > 0;
 
-def determine_exec():
+def determine_exec(drivertype):
+	if drivertype=="firefox":
+		driver_uri = "geckodriver/geckodriver";
+	elif drivertype=="chrome":
+		driver_uri = "chromedriver/chromedriver";
+	else:
+		raise RuntimeError("Unknown driver type " + drivertype);
 	os = platform.platform().lower();
 	arc = platform.machine().lower();
 	if os.find("windows") != -1:
 		if arc == "i386" or arc == "i686":
-			return "geckodriver/geckodriver-win-32";
+			if drivertype=="chrome":
+				return driver_uri + "-win";
+			else:
+				return driver_uri + "-win-32";
 		else:
-			return "geckodriver/geckodriver-win-64";
+			if drivertype=="chrome":
+				return driver_uri + "-win";
+			else:
+				return driver_uri + "-win-64";
 	elif os.find("linux") != -1:
 		if arc == "i386" or arc == "i686":
-			return "geckodriver/geckodriver-linux-32";
+			return driver_uri + "-linux-32";
 		else:
-			return "geckodriver/geckodriver-linux-64";
+			return driver_uri + "-linux-64";
 	elif os.find("mac") != -1:
-		return "geckodriver/geckodriver-mac";
+		return driver_uri + "-mac";
 	else:
 		return None;
 
@@ -163,18 +176,36 @@ def get_channel_start_date(driver):
 
 	return datetime.date(int(year), month, day);
 
-def gather_channel_data(channel_name, videos=False, join_date=False):
-	profile = webdriver.FirefoxProfile();
-	profile.set_preference("intl.accept_languages", "en-us");
-	executable_path = determine_exec();
+def getChromeDriver():
+	options = Options();
+	options.add_argument("--lang=en-us");
+	executable_path = determine_exec("chrome");
 	if executable_path == None:
 		print("Cannot determine operating system");
 		try:
-			driver = webdriver.Firefox();
+			return webdriver.chrome(chrome_options=options);
 		except Exception:
-			print("Cannot find geckodriver executable in PATH");
+			print("Cannot find chromedriver executable");
 	else:
-		driver = webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
+		return webdriver.Chrome(executable_path=executable_path, chrome_options=options);
+
+
+
+def getFirefoxDriver():
+	profile = webdriver.FirefoxProfile();
+	profile.set_preference("intl.accept_languages", "en-us");
+	executable_path = determine_exec("firefox");
+	if executable_path == None:
+		print("Cannot determine operating system");
+		try:
+			return webdriver.Firefox(firefox_profile=profile);
+		except Exception:
+			print("Cannot find geckodriver executable");
+	else:
+		return webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
+
+def gather_channel_data(channel_name, videos=False, join_date=False):
+	driver = getChromeDriver();
 	visit_channel(driver, channel_name);
 	url = driver.current_url;
 
