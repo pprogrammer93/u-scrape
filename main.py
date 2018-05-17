@@ -4,10 +4,15 @@ import mod_silent as silent;
 import common;
 import math;
 import datetime;
+import sys;
 
 channel_name = input("Channel Name: ");
+args = sys.argv;
+if len(args) > 1:
+	channel_data = visible.gather_channel_data(channel_name, args[1], videos=True, join_date=True);
+else:
+	channel_data = visible.gather_channel_data(channel_name, None, videos=True, join_date=True);
 
-channel_data = visible.gather_channel_data(channel_name, videos=True, join_date=True);
 links = channel_data["videos"];
 join_date = channel_data["date"];
 date_diff = datetime.date.today() - join_date;

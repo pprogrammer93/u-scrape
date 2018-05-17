@@ -45,9 +45,15 @@ def determine_exec(drivertype):
 				return driver_uri + "-win-64";
 	elif os.find("linux") != -1:
 		if arc == "i386" or arc == "i686":
-			return driver_uri + "-linux-32";
+			if drivertype=="chrome":
+				return driver_uri + "-linux";
+			else:
+				return driver_uri + "-linux-32";
 		else:
-			return driver_uri + "-linux-64";
+			if drivertype=="chrome":
+				return driver_uri + "-linux";
+			else:
+				return driver_uri + "-linux-64";
 	elif os.find("mac") != -1:
 		return driver_uri + "-mac";
 	else:
@@ -82,6 +88,7 @@ def scroll_to_bottom(driver):
 def visit_channel(driver, channel_name):
 	driver.get(common.URL);
 	searchBox = driver.find_element_by_name('search_query');
+	# searchBox.set_attribute("value", channel_name);
 	searchBox.send_keys(channel_name);
 	searchBox.send_keys(Keys.RETURN);
 	videosPage = False;
@@ -204,8 +211,23 @@ def getFirefoxDriver():
 	else:
 		return webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
 
-def gather_channel_data(channel_name, videos=False, join_date=False):
-	driver = getChromeDriver();
+def gather_channel_data(channel_name, browser=None, videos=False, join_date=False):
+	if browser != None:
+		if browser == "chrome":
+			driver = getChromeDriver();
+		elif browser == "firefox":
+			driver = getFirefoxDriver();
+		else:
+			raise RuntimeError("Unknown browser");
+	else:
+		try:
+			driver = getChromeDriver();
+		except Exception:
+			try:
+				driver = getFirefoxDriver();
+			except Exception as err:
+				print("Cannot use any browser.");
+				raise err;
 	visit_channel(driver, channel_name);
 	url = driver.current_url;
 
