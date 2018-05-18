@@ -1,6 +1,6 @@
 from selenium import webdriver;
-import mod_selenium as visible;
-import mod_silent as silent;
+import preparator as prep;
+import worker as worker;
 import common;
 import math;
 import datetime;
@@ -10,22 +10,22 @@ import sys;
 channel_name = input("Channel Name: ");
 args = sys.argv;
 if len(args) > 1:
-	if len(args) > 2 and args[2] == "silent":
+	if len(args) > 2 and args[2] == "worker":
 		time_start = time.time();
-		channel_data = visible.gather_channel_data(channel_name, args[1], True);
+		channel_data = prep.gather_channel_data(channel_name, args[1], True);
 	else:
 		time_start = time.time();
-		channel_data = visible.gather_channel_data(channel_name, args[1]);
+		channel_data = prep.gather_channel_data(channel_name, args[1]);
 else:
 	time_start = time.time();
-	channel_data = visible.gather_channel_data(channel_name, None);
+	channel_data = prep.gather_channel_data(channel_name, None);
 collect_duration = int(round(time.time() - time_start));
 
 links = channel_data["videos"];
 join_date = channel_data["date"];
 date_diff = datetime.date.today() - join_date;
 day_diff = date_diff.days;
-data = silent.scrape(links, 10);
+data = worker.scrape(links, 10);
 
 average_likes = int(math.floor(data["likes"]/data["count"]));
 average_dislikes = int(math.floor(data["dislikes"]/data["count"]));
