@@ -8,8 +8,93 @@ import common;
 import math;
 import datetime;
 
+class MostList:
+	def __init__(self):
+		self.views = [];
+		self.rviews = [];
+		self.likes = [];
+		self.dislikes = [];
+		self.vpd = [];
+	def compare(self, v1, v2, key):
+		if v1[key] < v2[key]:
+			return -1;
+		elif v1[key] == v2[key]:
+			return 0;
+		else:
+			return 1;
+	def add_if_most(self, video, limit, compare_type, compare_key):
+		if compare_key == "vpd":
+			mList = self.vpd;
+		elif compare_key == "views":
+			if compare_type == 1:
+				mList = self.views;
+			else:
+				mList = self.rviews;
+		elif compare_key == "likes":
+			mList = self.likes;
+		elif compare_key == "dislikes":
+			mList = self.dislikes;
+		if len(mList) < limit:
+			mList.append(video);
+		else:
+			index = limit-1;
+			while index >= 0:
+				comp = self.compare(mList[index], video, compare_key);
+				if comp == compare_type:
+					break;
+				else:
+					index -= 1;
+			if index < limit-1:
+				mList[limit-1] = video;
+	def decide_most_list(self, video, limit=3):
+		views = self.views;
+		rviews = self.rviews;
+		likes = self.likes;
+		dislikes = self.dislikes;
+		vpd = self.vpd;
+
+		self.add_if_most(video, limit, 1, "vpd");
+		self.add_if_most(video, limit, 1, "views");
+		self.add_if_most(video, limit, -1, "views");
+		self.add_if_most(video, limit, 1, "likes");
+		self.add_if_most(video, limit, 1, "dislikes");
+
+		self.views = sorted(self.views, key=lambda vid: vid["views"], reverse=True);
+		self.rviews = sorted(self.rviews, key=lambda vid: vid["views"]);
+		self.likes = sorted(self.likes, key=lambda vid: vid["likes"], reverse=True);
+		self.dislikes = sorted(self.dislikes, key=lambda vid: vid["dislikes"], reverse=True);
+		self.vpd = sorted(self.vpd, key=lambda vid: vid["vpd"], reverse=True);
+
+class Result:
+	def __init__(self):
+		self.count = 0;
+		self.views = 0;
+		self.likes = 0;
+		self.dislikes = 0;
+		self.upload_dates = [];
+		self.most = MostList();
+	def add(self, data):
+		self.most.decide_most_list(data);
+		self.count += 1;
+		self.views += data["views"];
+		self.likes += data["likes"];
+		self.dislikes += data["dislikes"];
+		self.upload_dates.append(data["upload_date"]);
+	def finalize(self):
+		return {
+			"count": self.count,
+			"views": self.views,
+			"likes": self.likes,
+			"dislikes": self.dislikes,
+			"most_viewed": self.most.views,
+			"least_viewed": self.most.rviews,
+			"most_liked": self.most.likes,
+			"most_disliked": self.most.dislikes,
+			"most_vpd": self.most.vpd
+		};
+
 class ResultPool(Thread):
-	def __init__(self, join_date):
+	def __init__(self, join_date, highlight=[]):
 		Thread.__init__(self);
 		self.lock = Lock();
 		self.event = Event();
@@ -17,30 +102,32 @@ class ResultPool(Thread):
 		self.running = False;
 		self.finish = Event();
 		self.finish.set();
+		self.duration = 0;
 		self.upload_dates = [];
 		self.join_date = join_date;
-		self.result = {
-			"count": 0,
-			"views": 0,
-			"likes": 0,
-			"dislikes": 0,
-			"duration": 0,
-			"most": {
-				"views": [],
-				"rviews": [],
-				"likes": [],
-				"dislikes": [],
-				"vpd": []	
-			}
-		};
+		self.result = Result();
+		self.highlight = highlight;
+		self.h_lower = [];
+		self.h_res = [];
+		for i in range(0, len(highlight)):
+			self.h_res.append(Result());
+			self.h_lower.append(highlight[i].lower());
 	def add(self, data, link):
 		self.lock.acquire();
 		self.queue.put({"data": data, "link": link});
 		self.event.set();
 		self.lock.release();
 	def result_report(self, link, data):
-		print(str(self.result["count"] + 1) + ". Result from " + link);
+		print(str(self.result.count + 1) + ". Result from " + link);
 		common.print_video_data(data);
+	def analyze(self, item):
+		self.result_report(item["link"], item["data"]);
+		self.upload_dates.append(item["data"]["upload_date"]);
+		self.result.add(item["data"]);
+		title = item["data"]["title"].lower();
+		for i in range(0, len(self.highlight)):
+			if title.find(self.h_lower[i]) != -1:
+				self.h_res[i].add(item["data"]);
 	def run(self):
 		if self.finish.is_set() == False:
 			raise RuntimeError("Unable to start running ResultPool.");
@@ -51,16 +138,10 @@ class ResultPool(Thread):
 			self.event.wait();
 			if self.queue.empty() == False:
 				item = self.queue.get();
-				self.result_report(item["link"], item["data"]);
-				common.decide_most_list(self.result["most"], item["data"]);
-				self.result["count"] += 1;
-				self.result["views"] += item["data"]["views"];
-				self.result["likes"] += item["data"]["likes"];
-				self.result["dislikes"] += item["data"]["dislikes"];
-				self.upload_dates.append(item["data"]["upload_date"]);
+				self.analyze(item);
 			else:
 				self.event.clear();
-		self.result["duration"] = int(round(time.time() - time_start));
+		self.duration = int(round(time.time() - time_start));
 		self.finish.set();
 	def stop(self):
 		self.running = False;
@@ -75,19 +156,15 @@ class ResultPool(Thread):
 		if self.running == True:
 			raise RuntimeError("Unable to get result from running ResultPool. Call stop() first.");
 		self.finish.wait();
-		return {
-			"count": self.result["count"],
-			"views": self.result["views"],
-			"likes": self.result["likes"],
-			"dislikes": self.result["dislikes"],
-			"duration": self.result["duration"],
-			"avg_upload_interval": self.calculate_upload_interval(),
-			"most_viewed": self.result["most"]["views"],
-			"least_viewed": self.result["most"]["rviews"],
-			"most_liked": self.result["most"]["likes"],
-			"most_disliked": self.result["most"]["dislikes"],
-			"most_vpd": self.result["most"]["vpd"]
+		result = {
+			"main": self.result.finalize(),
+			"highlight": {},
+			"duration": self.duration,
+			"avg_upload_interval": self.calculate_upload_interval()
 		};
+		for i in range(0, len(self.highlight)):
+			result["highlight"][self.highlight[i]] = self.h_res[i].finalize();
+		return result;
 
 class Worker(Thread):
 	def __init__(self, links, pool, id):
@@ -169,7 +246,7 @@ def calculate_quota(ammount, divider):
 			res.append(base);
 	return res;
 
-def scrape(links, rps, join_date=None):
+def scrape(links, rps, join_date=None, highlight=[]):
 	interval = 1/rps;
 	prev = 0;
 	count = 1;
@@ -186,7 +263,7 @@ def scrape(links, rps, join_date=None):
 	print("Collecting data from " + str(len(links)) + " videos...");
 
 	print("Setting up request...");
-	pool = ResultPool(join_date);
+	pool = ResultPool(join_date, highlight);
 	workers = [];
 	quota = calculate_quota(len(links), rps);
 	left = 0;
