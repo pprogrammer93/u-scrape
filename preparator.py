@@ -309,24 +309,27 @@ def get_channel_url(channel_name):
 			return "http://www.youtube.com" + url["href"];
 	return None;
 
-def gather_channel_data(channel_name, browser=None, silent=False):
+def open_browser(browser, silent):
 	print("Open browser...");
 	if browser != None:
 		if browser == "chrome":
-			driver = get_chrome_driver(silent);
+			return get_chrome_driver(silent);
 		elif browser == "firefox":
-			driver = get_firefox_driver(silent);
+			return get_firefox_driver(silent);
 		else:
 			raise RuntimeError("Unknown browser");
 	else:
 		try:
-			driver = get_chrome_driver(silent);
+			return get_chrome_driver(silent);
 		except Exception:
 			try:
-				driver = get_firefox_driver(silent);
+				return get_firefox_driver(silent);
 			except Exception as err:
 				print("Cannot use any browser.");
 				raise err;
+
+def gather_channel_data(channel_name, browser=None, silent=False):
+	driver = open_browser(browser, silent);
 	print("Visit channel...");
 	if silent:
 		url = get_channel_url(channel_name);
@@ -337,20 +340,13 @@ def gather_channel_data(channel_name, browser=None, silent=False):
 		visit_channel(driver, channel_name);
 		url = driver.current_url;
 
-	res = {
-		"videos": None,
-		"date": None
-	};
-
 	print("Get channel join date...");
 	date = get_channel_start_date(driver, url, silent);
-	res["date"] = date;
 	print("Visit channel...");
 	if silent==False:
 		force_visit(driver, url);
 	print("Get videos data...");
 	videos_data = collect_videos_link(driver, url, silent);
-	res["videos_data"] = videos_data;
 
 	driver.close();
-	return res;
+	return {"videos_data": videos_data, "date": date};

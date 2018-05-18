@@ -60,7 +60,6 @@ common.print_videos_data("Most Liked Videos", data["most_liked"]);
 common.print_videos_data("Most Disliked Videos", data["most_disliked"]);
 if 'most_vpd' in data and len(data['most_vpd']) > 0:
 	common.print_videos_data("Most Viewed Video Per Day", data["most_vpd"]);
-
 print("Total Videos        : " + common.readable(data["count"]));
 print("Total Views         : " + common.readable(data["views"]));
 print("Total Likes         : " + common.readable(data["likes"]));
