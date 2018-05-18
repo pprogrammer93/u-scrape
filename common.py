@@ -54,7 +54,8 @@ def print_video_data(data):
 	if "vpd" in data:
 		print("VPD      : " + readable(data["vpd"]));
 
-def print_videos_data(mList):
+def print_videos_data(most_type, mList):
+	print("# " + most_type + ":");
 	for video in mList:
 		print_video_data(video);
 		print(".");
