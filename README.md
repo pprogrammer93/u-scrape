@@ -11,7 +11,7 @@ This is web robot to crawl data from a youtube __channel__. Develop with Python 
 - Likes per Video
 - Dislike per Video
 - Average Upload Interval
-- Minimum/Average/Maximum Video Lenght
+- Minimum/Average/Maximum Video Length
 - Views per Day (VPD)
 - 3 Most Viewed
 - 3 Least Viewed
