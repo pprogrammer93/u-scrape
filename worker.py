@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup;
 from threading import Lock, Event, Thread;
 from queue import LifoQueue;
-from requests.exceptions import ConnectionError, ReadTimeout
+from requests.exceptions import ConnectionError, ReadTimeout, Timeout
 import requests;
 import time;
 import common;
@@ -90,18 +90,20 @@ class ResultPool(Thread):
 		};
 
 class Worker(Thread):
-	def __init__(self, links, pool):
+	def __init__(self, links, pool, id):
 		Thread.__init__(self);
 		self.pool = pool;
 		self.links = links;
+		self.id = id;
 	def extract_data(self, url):
 		headers = {"accept-language": "en-us"};
 		requestOK = False;
 		while requestOK == False:
 			try:
-				page = requests.get(url, headers=headers);
+				page = requests.get(url, headers=headers, timeout=5.000);
 				requestOK = True;
-			except (ConnectionError, ReadTimeout):
+			except (ConnectionError, ReadTimeout, Timeout):
+				print("Worker " + str(self.id) + " is reloading...");
 				requestOK = False;
 		parsed = BeautifulSoup(page.content, "html.parser");
 
@@ -193,7 +195,7 @@ def scrape(links, rps, join_date=None):
 		print("Setting up " + str(i + 1) + " worker...");
 		right = left + quota[i]; 
 		qLinks = links[left:right];
-		worker = Worker(qLinks, pool);
+		worker = Worker(qLinks, pool, (i + 1));
 		workers.append(worker);
 		left = right;
 

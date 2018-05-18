@@ -10,15 +10,15 @@ import sys;
 channel_name = input("Channel Name: ");
 args = sys.argv;
 if len(args) > 1:
-	if len(args) > 2 and args[2] == "silent":
+	if len(args) > 2 and args[2] == "gui":
 		time_start = time.time();
-		channel_data = prep.gather_channel_data(channel_name, args[1], True);
+		channel_data = prep.gather_channel_data(channel_name, args[1], False);
 	else:
 		time_start = time.time();
-		channel_data = prep.gather_channel_data(channel_name, args[1]);
+		channel_data = prep.gather_channel_data(channel_name, args[1], True);
 else:
 	time_start = time.time();
-	channel_data = prep.gather_channel_data(channel_name, None);
+	channel_data = prep.gather_channel_data(channel_name, None, True);
 collect_duration = int(round(time.time() - time_start));
 
 day_diff = (datetime.date.today() - channel_data["date"]).days;
@@ -71,7 +71,7 @@ print("Avg Upload Interval : " + common.readable(data["avg_upload_interval"]) + 
 print("Avg Video Length    : " + average_length);
 print("Min Video Length    : " + min_length);
 print("Max Video Length    : " + max_length);
-print("Join Date           : " + str(channel_data["date"]));
+print("Join Date           : " + str(channel_data["date"]) + ", " + str(day_diff) + " days ago");
 print("Views per Day       : " + common.readable(average_views));
 print("# Estimated Income from Youtube");
 print("# Assumed CPM is 1$");
@@ -90,16 +90,16 @@ print("# Estimated Income from Youtube (with another calculation)");
 print("# Using adsense after x time join Youtube:");
 if (day_diff - (6 * 30)) > 0:
 	total_income = math.floor((day_diff - 6*30) * average_views * dollar_to_rupiah / one_mile);
-	per_month = math.floor(total_income/day_diff);
-	true_income = per_month * (day_diff - 6 * 30);
+	per_month = math.floor(total_income/day_diff*30);
+	true_income = math.floor(total_income/day_diff) * (day_diff - 6 * 30);
 	print("# - 6 months  : Rp" + common.readable(true_income) + " Rp" + common.readable(per_month) + "/month");
 if (day_diff - 365) > 0:
 	total_income = math.floor((day_diff - 365) * average_views * dollar_to_rupiah / one_mile);
-	per_month = math.floor(total_income/day_diff);
-	true_income = per_month * (day_diff - 365);
+	per_month = math.floor(total_income/day_diff*30);
+	true_income = math.floor(total_income/day_diff) * (day_diff - 365);
 	print("# - 12 months : Rp" + common.readable(true_income) + " Rp" + common.readable(per_month) + "/month");
 if (day_diff - (18 * 30) > 0):
 	total_income = math.floor((day_diff - 18*30) * average_views * dollar_to_rupiah / one_mile);
-	per_month = math.floor(total_income/day_diff);
-	true_income = per_month * (day_diff - (18 * 30));
+	per_month = math.floor(total_income/day_diff*30);
+	true_income = math.floor(total_income/day_diff) * (day_diff - (18 * 30));
 	print("# - 18 months : Rp" + common.readable(true_income) + " Rp" + common.readable(per_month) + "/month");

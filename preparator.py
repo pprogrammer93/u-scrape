@@ -5,7 +5,8 @@ from selenium.webdriver.support.ui import WebDriverWait;
 from selenium.webdriver.support import expected_conditions as EC;
 from selenium.common.exceptions import TimeoutException;
 from selenium.common.exceptions import WebDriverException;
-from selenium.webdriver.chrome.options import Options;
+from selenium.webdriver.chrome.options import Options as ChromeOptions;
+from selenium.webdriver.firefox.options import Options as FirefoxOptions;
 from bs4 import BeautifulSoup;
 import common;
 import time;
@@ -255,11 +256,11 @@ def get_channel_start_date(driver, url, silent=False):
 	return datetime.date(int(year), month, day);
 
 def get_chrome_driver(silent):
-	options = Options();
+	options = ChromeOptions();
 	if silent:
 		options.add_argument("--mute-audio");
 		options.add_argument("--headless");
-		options.add_argument("window-size=1366x768");
+		options.add_argument("--window-size=1366x768");
 	options.add_argument("--lang=en-us");
 	executable_path = determine_exec("chrome");
 	if executable_path == None:
@@ -273,18 +274,27 @@ def get_chrome_driver(silent):
 
 
 
-def get_firefox_driver():
+def get_firefox_driver(silent):
 	profile = webdriver.FirefoxProfile();
 	profile.set_preference("intl.accept_languages", "en-us");
 	executable_path = determine_exec("firefox");
+	if silent:
+		options = FirefoxOptions();
+		options.add_argument("-headless");
 	if executable_path == None:
 		print("Cannot determine operating system");
 		try:
-			return webdriver.Firefox(firefox_profile=profile);
+			if silent:
+				return webdriver.Firefox(firefox_options=options, firefox_profile=profile);
+			else:
+				return webdriver.Firefox(firefox_profile=profile);
 		except Exception:
 			print("Cannot find geckodriver executable");
 	else:
-		return webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
+		if silent:
+			return webdriver.Firefox(firefox_options=options, executable_path=executable_path, firefox_profile=profile);
+		else:
+			return webdriver.Firefox(executable_path=executable_path, firefox_profile=profile);
 
 def get_channel_url(channel_name):
 	page = requests.get("https://www.youtube.com/results?search_query=" + channel_name.replace(" ", "+"));
@@ -300,11 +310,12 @@ def get_channel_url(channel_name):
 	return None;
 
 def gather_channel_data(channel_name, browser=None, silent=False):
+	print("Open browser...");
 	if browser != None:
 		if browser == "chrome":
 			driver = get_chrome_driver(silent);
 		elif browser == "firefox":
-			driver = get_firefox_driver();
+			driver = get_firefox_driver(silent);
 		else:
 			raise RuntimeError("Unknown browser");
 	else:
@@ -312,10 +323,11 @@ def gather_channel_data(channel_name, browser=None, silent=False):
 			driver = get_chrome_driver(silent);
 		except Exception:
 			try:
-				driver = get_firefox_driver();
+				driver = get_firefox_driver(silent);
 			except Exception as err:
 				print("Cannot use any browser.");
 				raise err;
+	print("Visit channel...");
 	if silent:
 		url = get_channel_url(channel_name);
 		if url == None:
@@ -330,10 +342,13 @@ def gather_channel_data(channel_name, browser=None, silent=False):
 		"date": None
 	};
 
+	print("Get channel join date...");
 	date = get_channel_start_date(driver, url, silent);
 	res["date"] = date;
+	print("Visit channel...");
 	if silent==False:
 		force_visit(driver, url);
+	print("Get videos data...");
 	videos_data = collect_videos_link(driver, url, silent);
 	res["videos_data"] = videos_data;
 
