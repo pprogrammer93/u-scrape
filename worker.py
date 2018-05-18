@@ -9,7 +9,7 @@ import math;
 import datetime;
 
 class ResultPool(Thread):
-	def __init__(self):
+	def __init__(self, join_date):
 		Thread.__init__(self);
 		self.lock = Lock();
 		self.event = Event();
@@ -17,6 +17,8 @@ class ResultPool(Thread):
 		self.running = False;
 		self.finish = Event();
 		self.finish.set();
+		self.upload_dates = [];
+		self.join_date = join_date;
 		self.result = {
 			"count": 0,
 			"views": 0,
@@ -36,6 +38,9 @@ class ResultPool(Thread):
 		self.queue.put({"data": data, "link": link});
 		self.event.set();
 		self.lock.release();
+	def result_report(self, link, data):
+		print(str(self.result["count"] + 1) + ". Result from " + link);
+		common.print_video_data(data);
 	def run(self):
 		if self.finish.is_set() == False:
 			raise RuntimeError("Unable to start running ResultPool.");
@@ -46,15 +51,13 @@ class ResultPool(Thread):
 			self.event.wait();
 			if self.queue.empty() == False:
 				item = self.queue.get();
-				data = item["data"];
-				link = item["link"];
-				print(str(self.result["count"] + 1) + ". Result from " + link);
-				common.print_video_data(data);
-				common.decide_most_list(self.result["most"], data);
+				self.result_report(item["link"], item["data"]);
+				common.decide_most_list(self.result["most"], item["data"]);
 				self.result["count"] += 1;
-				self.result["views"] += data["views"];
-				self.result["likes"] += data["likes"];
-				self.result["dislikes"] += data["dislikes"];
+				self.result["views"] += item["data"]["views"];
+				self.result["likes"] += item["data"]["likes"];
+				self.result["dislikes"] += item["data"]["dislikes"];
+				self.upload_dates.append(item["data"]["upload_date"]);
 			else:
 				self.event.clear();
 		self.result["duration"] = int(round(time.time() - time_start));
@@ -62,6 +65,12 @@ class ResultPool(Thread):
 	def stop(self):
 		self.running = False;
 		self.event.set();
+	def calculate_upload_interval(self):
+		sorted(self.upload_dates);
+		sum_interval = (self.upload_dates[0] - self.join_date).days;
+		for i in range(1, len(self.upload_dates)):
+			sum_interval += (self.upload_dates[i] - self.upload_dates[i-1]).days;
+		return math.floor(sum_interval/(len(self.upload_dates)));
 	def get_result(self):
 		if self.running == True:
 			raise RuntimeError("Unable to get result from running ResultPool. Call stop() first.");
@@ -72,6 +81,7 @@ class ResultPool(Thread):
 			"likes": self.result["likes"],
 			"dislikes": self.result["dislikes"],
 			"duration": self.result["duration"],
+			"avg_upload_interval": self.calculate_upload_interval(),
 			"most_viewed": self.result["most"]["views"],
 			"least_viewed": self.result["most"]["rviews"],
 			"most_liked": self.result["most"]["likes"],
@@ -114,10 +124,8 @@ class Worker(Thread):
 
 		sdate = ldate[0].get_text().strip().split(" ");
 		slen = len(sdate);
-		day = common.toInt(sdate[slen-2], ",");
-		month = common.get_month(sdate[slen-3]);
-		year = sdate[slen-1];
-		date_diff = datetime.date.today() - datetime.date(int(year), month, day);
+		upload_date = datetime.date(int(sdate[slen-1]), common.get_month(sdate[slen-3]), common.toInt(sdate[slen-2], ","));
+		date_diff = datetime.date.today() - upload_date;
 		if date_diff == 0:
 			vpd = views;
 		else:
@@ -128,7 +136,8 @@ class Worker(Thread):
 			"views": views,
 			"likes": likes,
 			"dislikes": dislikes,
-			"vpd": vpd
+			"vpd": vpd,
+			"upload_date": upload_date 
 		};
 	def run(self):
 		prev = 0;
@@ -158,7 +167,7 @@ def calculate_quota(ammount, divider):
 			res.append(base);
 	return res;
 
-def scrape(links, rps):
+def scrape(links, rps, join_date=None):
 	interval = 1/rps;
 	prev = 0;
 	count = 1;
@@ -175,7 +184,7 @@ def scrape(links, rps):
 	print("Collecting data from " + str(len(links)) + " videos...");
 
 	print("Setting up request...");
-	pool = ResultPool();
+	pool = ResultPool(join_date);
 	workers = [];
 	quota = calculate_quota(len(links), rps);
 	left = 0;

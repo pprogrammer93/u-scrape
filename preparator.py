@@ -66,7 +66,7 @@ def force_visit(driver, url):
 		driver.set_page_load_timeout(10);
 		driver.get(url);
 	except (WebDriverException, TimeoutException) as e:
-		print("Reloading");
+		print("Reloading...");
 
 def get_element(driver, bytype, key):
 	wait = WebDriverWait(driver, 10).until(EC.presence_of_element_located((bytype, key)));
@@ -78,14 +78,17 @@ def get_elements(driver, bytype, key):
 
 def scroll_to_bottom(driver):
 	continuation_xpath = "//div[@id='continuations']/yt-next-continuation";
-	while len(driver.find_elements_by_xpath(continuation_xpath)) > 0:
-		current_offset = driver.execute_script("return window.pageYOffset") + 1000;
-		driver.execute_script("window.scrollTo(0," + str(current_offset) + ")");
-		try:
-			wait = WebDriverWait(driver, 7).until_not(StaticScroller(current_offset, continuation_xpath));
-		except TimeoutException:
-			return False;
-	return True;
+	try:
+		while len(driver.find_elements_by_xpath(continuation_xpath)) > 0:
+			current_offset = driver.execute_script("return window.pageYOffset") + 1000;
+			driver.execute_script("window.scrollTo(0," + str(current_offset) + ")");
+			try:
+				wait = WebDriverWait(driver, 7).until_not(StaticScroller(current_offset, continuation_xpath));
+			except TimeoutException:
+				return False;
+		return True;
+	except Exception:
+		return False;
 
 def visit_channel(driver, channel_name):
 	driver.get(common.URL);
@@ -120,17 +123,49 @@ def open_channel_tab(driver, tabname):
 		i = i + 1;
 	tabs[videoIndex].click();
 
+def videos_scan_reloader(driver, url):
+	eLengths = driver.find_elements_by_xpath("//ytd-thumbnail-overlay-time-status-renderer/span");
+	videos = driver.find_elements_by_xpath("//h3/a[@id='video-title']");
+	sec_counter = 0;
+	finish = False;
+	while sec_counter < 10 and finish == False:
+		if len(eLengths) == len(videos):
+			finish = True;
+		else:
+			time.sleep(1);
+			eLengths = driver.find_elements_by_xpath("//ytd-thumbnail-overlay-time-status-renderer/span");
+			videos = driver.find_elements_by_xpath("//h3/a[@id='video-title']");
+			sec_counter += 1;
+	if sec_counter == 10:
+		return None;
+	return {"videos": videos, "lengths": eLengths};
+
 def scan_videos_link(driver, url):
 	while True:
 		force_visit(driver, url);
 		if scroll_to_bottom(driver) == True:
 			break;
-	videos = driver.find_elements_by_xpath("//h3/a[@id='video-title']");
+	
 	channel_name = driver.find_element_by_xpath("//h1[@id='channel-title-container']/span").text;
 	eAuthor = driver.find_elements_by_xpath("//div[@id='metadata']/div[@id='byline-container']/yt-formatted-string/a");
+	eLengths = driver.find_elements_by_xpath("//ytd-thumbnail-overlay-time-status-renderer/span");
+
+	data = videos_scan_reloader(driver, url);
+	if data == None:
+		print("Reloading...");
+		return scan_videos_link(driver, url);
+
+	videos = data["videos"];
+	eLengths = data["lengths"];
+
+	codes = [];
 	links = [];
-	print("Collecting url...");
-	for video in videos:
+	lengths = [];
+	titles = [];
+	i = 0;
+	while i < len(videos):
+		length = eLengths[i];
+		video = videos[i];
 		title = video.text;
 		link = video.get_attribute("href");
 		if len(eAuthor) > 0:
@@ -138,9 +173,14 @@ def scan_videos_link(driver, url):
 		else:
 			true_author = True;
 		if len(title) > 0 and len(link) > 0 and true_author:
-			links.append(link);
-			print("Appending " + title + " " + link);
-	return links;
+			code = str(link[link.find("=")+1:]);
+			if not code in codes: 
+ 				codes.append(code);
+ 				links.append(link);
+ 				lengths.append(length.get_attribute("innerText").strip());
+ 				titles.append(title);
+		i += 1;
+	return {"links": links, "lengths": lengths, "codes": codes, "title": titles};
 
 def collect_videos_link(driver, url, silent=False):
 	if silent:
@@ -175,12 +215,22 @@ def collect_videos_link(driver, url, silent=False):
 	
 	print("Found " + str(len(categoryLinks)) + " categories... ");
 
-	videoLinks = [];
+	videos_codes = [];
+	videos_links = [];
+	videos_lengths = [];
 	for link in categoryLinks:
 		print("Collecting links from " + link);
-		videoLinks.extend(scan_videos_link(driver, link));
+		res = scan_videos_link(driver, link);
+		for i in range(0, len(res["codes"])):
+			if res["codes"][i] not in videos_codes:
+				print("Appending " + res["title"][i] + " " + res["links"][i]);
+				videos_codes.append(res["codes"][i]);
+				videos_links.append(res["links"][i]);
+				if len(res["lengths"][i]) == 0:
+					raise RuntimeError("Blank length for " + res["title"][i] + " " + res["links"][i]);
+				videos_lengths.append(res["lengths"][i]);
 
-	return list(set(videoLinks));
+	return {"links": videos_links, "lengths": videos_lengths};
 
 def get_channel_start_date(driver, url, silent=False):
 	datestr = None;
@@ -284,8 +334,8 @@ def gather_channel_data(channel_name, browser=None, silent=False):
 	res["date"] = date;
 	if silent==False:
 		force_visit(driver, url);
-	videoLinks = collect_videos_link(driver, url, silent);
-	res["videos"] = videoLinks;
+	videos_data = collect_videos_link(driver, url, silent);
+	res["videos_data"] = videos_data;
 
 	driver.close();
 	return res;

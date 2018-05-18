@@ -25,9 +25,6 @@ You can try it. You just need to clone or download all the files. Make sure you 
 ### Planned to Develop
 1. Features:
 	- Collect data for spesific keywords found in video's title.
-	- Another type of income estimation
-	- Average upload interval
-	- Minimum/Average/Maximum video length
 2. Store every result to SQL database
 3. Visualize the collected data
 

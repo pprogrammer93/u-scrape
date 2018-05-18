@@ -22,11 +22,32 @@ else:
 collect_duration = int(round(time.time() - time_start));
 
 day_diff = (datetime.date.today() - channel_data["date"]).days;
-data = worker.scrape(channel_data["videos"], 10);
+data = worker.scrape(channel_data["videos_data"]["links"], 10, channel_data["date"]);
+
+sum_video_length = 0;
+tmin_video_length = None;
+tmax_video_length = None;
+for length in channel_data["videos_data"]["lengths"]:
+	strtime = length.split(":");
+	fmt = "%S";
+	if len(strtime) > 1:
+		fmt = "%M:" + fmt;
+	if len(strtime) > 2:
+		fmt = "%H:" + fmt; 
+	strp = time.strptime(length, fmt);
+	total_seconds = datetime.timedelta(hours=strp.tm_hour, minutes=strp.tm_min, seconds=strp.tm_sec).total_seconds();
+	if tmin_video_length == None or tmin_video_length > total_seconds:
+		tmin_video_length = total_seconds;
+	if tmax_video_length == None or tmax_video_length < total_seconds:
+		tmax_video_length = total_seconds;
+	sum_video_length += total_seconds;
 
 average_likes = math.floor(data["likes"]/data["count"]);
 average_dislikes = math.floor(data["dislikes"]/data["count"]);
 average_views = math.floor(data["views"]/day_diff);
+average_length = str(datetime.timedelta(seconds=math.floor(sum_video_length/data["count"])));
+min_length = str(datetime.timedelta(seconds=tmin_video_length));
+max_length = str(datetime.timedelta(seconds=tmax_video_length));
 one_mile = 1000;
 dollar_to_rupiah = 10000;
 
@@ -40,14 +61,18 @@ common.print_videos_data("Most Disliked Videos", data["most_disliked"]);
 if 'most_vpd' in data and len(data['most_vpd']) > 0:
 	common.print_videos_data("Most Viewed Video Per Day", data["most_vpd"]);
 
-print("Total Videos       : " + common.readable(data["count"]));
-print("Total Views        : " + common.readable(data["views"]));
-print("Total Likes        : " + common.readable(data["likes"]));
-print("Total Dislikes     : " + common.readable(data["dislikes"]));
-print("Likes per Video    : " + common.readable(average_likes));
-print("Dislikes per Video : " + common.readable(average_dislikes));
-print("Join Date          : " + str(channel_data["date"]));
-print("Views per Day      : " + common.readable(average_views));
+print("Total Videos        : " + common.readable(data["count"]));
+print("Total Views         : " + common.readable(data["views"]));
+print("Total Likes         : " + common.readable(data["likes"]));
+print("Total Dislikes      : " + common.readable(data["dislikes"]));
+print("Likes per Video     : " + common.readable(average_likes));
+print("Dislikes per Video  : " + common.readable(average_dislikes));
+print("Avg Upload Interval : " + common.readable(data["avg_upload_interval"]) + " days");
+print("Avg Video Length    : " + average_length);
+print("Min Video Length    : " + min_length);
+print("Max Video Length    : " + max_length);
+print("Join Date           : " + str(channel_data["date"]));
+print("Views per Day       : " + common.readable(average_views));
 print("# Estimated Income from Youtube");
 print("# Assumed CPM is 1$");
 print("# Using adsense after x time join Youtube:");
