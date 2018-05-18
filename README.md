@@ -10,6 +10,8 @@ This is web robot to crawl data from a youtube __channel__. Develop with Python 
 - Total Dislikes
 - Likes per Video
 - Dislike per Video
+- Average Upload Interval
+- Minimum/Average/Maximum Video Lenght
 - Views per Day (VPD)
 - 3 Most Viewed
 - 3 Least Viewed
@@ -18,6 +20,8 @@ This is web robot to crawl data from a youtube __channel__. Develop with Python 
 - 3 Highest VPD
 - Total Income Estimation
 - Income per Month Estimation
+
+You can also hightlight some keywords from video's title to get seperate data from the overall data. It will be usefull in case some the video's author add the video's category at the title, so you can gather the data for certain category.
 
 ### It's Fun
 You can try it. You just need to clone or download all the files. Make sure you have Python 3 already installed (not tested for Python 2), and also make sure [Selenium](http://selenium-python.readthedocs.io/installation.html) and [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-beautiful-soup) is available, then execute "*python main.py*" (or "*python3 main.py*" if you use Python in Linux). Give the channel name, then relax and wait until that robot finish crawling. Oh almost forget, this robot use Firefox Browser or Chrome Browser for some collecting video links, so make sure you have Firefox or Chrome installed.
